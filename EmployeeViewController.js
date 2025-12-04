@@ -4,7 +4,7 @@ EmployeeViewController = BaseViewController.extend( {
 	_required_files: {
 		10: ['APIUserGroup', 'APIHierarchyControl', 'APIBranch', 'APIDepartment', 'APIUserTitle', 'APICompanyGenericTag', 'TImage', 'APILegalEntity',
 			'APIPayPeriodSchedule', 'APIPolicyGroup', 'APICurrency', 'APIEthnicGroup','APIUserSkill', 'APIQualification', 'APIQualificationGroup',
-			'APIUserEducation', 'APIUserMembership', 'APIUserLicense', 'APIUserLanguage', 'APIRemittanceDestinationAccount', 'APIUserDefault', 'APIRemittanceSourceAccount','APIAccrualPolicyUserModifier',
+			'APIUserEducation', 'APIUserMembership','APIWage', 'APIUserLicense', 'APIUserLanguage', 'APIRemittanceDestinationAccount', 'APIUserDefault', 'APIRemittanceSourceAccount','APIAccrualPolicyUserModifier',
 			'APIUserReviewControl', 'APIKPIGroup', 'APIUserReview', 'APIKPI','TImageAdvBrowser'],
 		20: ['APIJob', 'APIJobItem', ],
 	},
@@ -66,6 +66,9 @@ EmployeeViewController = BaseViewController.extend( {
 		this.user_group_api = new (APIFactory.getAPIClass( 'APIUserGroup' ))();
 		this.company_api = new (APIFactory.getAPIClass( 'APICompany' ))();
 		this.hierarchyControlAPI = new (APIFactory.getAPIClass( 'APIHierarchyControl' ))();
+
+		this.wage_api = new (APIFactory.getAPIClass('APIWage'))();
+
 
 		this.invisible_context_menu_dic[ContextMenuIconName.copy] = true; //Hide some context menus
 
@@ -427,19 +430,36 @@ EmployeeViewController = BaseViewController.extend( {
 			filter.filter_data = {};
 			filter.filter_data.id = [id];
 
-			this.api['get' + this.api.key_name]( filter, {
-				onResult: function( result ) {
-					var result_data = result.getResult();
+	this.api['get' + this.api.key_name]( filter, {
+    onResult: function( result ) {
+        var rec = result.getResult();
+        if (!rec || !rec[0]) {
+            callBack(null);
+            return;
+        }
 
-					if ( !result_data ) {
-						result_data = [];
-					}
-					result_data = result_data[0];
+        rec = rec[0];
 
-					callBack( result_data );
+        // ---- FETCH SALARY (WAGE) ----
+        $this.wage_api.getWage({
+            filter_data: { user_id: rec.id },
+            filter_sort: { effective_date: 'desc' },
+            limit: 1
+        }, {
+            onResult: function(wRes) {
+                var wage = wRes.getResult();
+                if (wage && wage[0] && wage[0].amount) {
+                    rec.salary = wage[0].amount;
+                } else {
+                    rec.salary = 0;
+                }
 
-				}
-			} );
+                callBack(rec);
+            }
+        });
+    }
+});
+
 		}
 
 	},
